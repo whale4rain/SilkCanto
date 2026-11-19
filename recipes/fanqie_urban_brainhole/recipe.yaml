@@ -1,0 +1,41 @@
+name: fanqie_urban_brainhole
+display_name: 番茄都市脑洞（轻金手指爽文）
+platform: fanqie
+genre: 都市脑洞
+description: >-
+  面向番茄小说 2 万字签约评估与长篇连载验证的都市脑洞/轻金手指配方。
+  强调开篇强冲突、前 3 章快速兑现金手指爽点、手机端短段落高对话节奏与章末强钩子。
+
+targets:
+  target_chapters_for_contract: 10
+  chapter_min_chars: 2000
+  chapter_max_chars: 2500
+  opening_race_variants: 3
+  max_rewrite_retries: 2
+  critic_pass_score: 7.0
+
+style_guide:
+  pov: 第三人称限知视角（紧贴主角）
+  pacing: 快节奏、每章至少 1 个明确情绪起伏与 1 个小高潮/反差
+  paragraph_style: 手机端短段落，单段一般 20-120 字，多用对话、具体动作与生活脏细节推动剧情
+  forbidden_habits:
+    - 禁止章节末尾强行抒情、鸡汤升华或总结人生大道理
+    - 禁止在开头大段科普背景设定，设定必须随剧情冲突自然带出
+    - 禁止主角圣母、无意义憋屈超过 1 章
+
+models:
+  # 留空则回退到 .env 中的 SILKCANTO_DEFAULT_MODEL (默认 ds-pro)
+  deconstruct: ""
+  foundation: ""
+  beat: ""
+  draft: ""
+  critic: ""
+  commit: ""
+
+temperatures:
+  deconstruct: 0.3
+  foundation: 0.7
+  beat: 0.5
+  draft: 0.85
+  critic: 0.2
+  commit: 0.1

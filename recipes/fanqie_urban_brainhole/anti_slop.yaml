@@ -1,0 +1,49 @@
+# 零 Token 确定性去 AI 味与番茄节奏 Linter 规则
+limits:
+  min_chars: 1900
+  max_chars: 2800
+  min_dialogue_ratio: 0.18
+  max_paragraph_chars: 180
+  max_long_paragraphs: 3
+  max_em_dash_count: 4
+  max_not_but_count: 3
+  max_cliche_total: 4
+  max_single_cliche: 2
+
+# 绝对禁止出现的 AI 讲义腔 / 翻译腔 / 总结腔（出现即扣分并触发重写建议）
+banned_phrases:
+  - 总而言之
+  - 值得注意的是
+  - 不可否认的是
+  - 换句话说
+  - 综上所述
+  - 显而易见的是
+  - 从某种意义上说
+  - 某种程度上来说
+  - 正如前文所述
+  - 这不仅意味着
+  - 不仅如此，更
+  - 归根结底
+  - 在这一刻，他深深明白
+  - 命运的齿轮开始转动
+  - 故事才刚刚开始
+  - 一场风暴正在酝酿
+
+# 高频网文 AI 套话（超过阈值即报错）
+cliche_phrases:
+  - 眼神微眯
+  - 嘴角勾起一抹
+  - 空气仿佛凝固
+  - 倒吸一口凉气
+  - 眼中闪过一丝
+  - 深吸了一口气
+  - 不由自主地
+  - 内心掀起惊涛骇浪
+  - 浑身一震
+  - 死死盯着
+  - 瞳孔骤缩
+  - 脸色瞬间阴沉
+  - 淡淡一笑
+  - 嗤笑一声
+  - 不可置信
+  - 泛起一丝涟漪
