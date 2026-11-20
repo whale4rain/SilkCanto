@@ -1,16 +1,19 @@
-# 零 Token 确定性去 AI 味 Linter（结合大奉拆书实测指标 + story-deslop 禁忌清单）
+# 零 Token 确定性去 AI 味 Linter（表层禁词 + 深层 AI 指纹检测）
 limits:
   min_chars: 1850
   max_chars: 2850
   min_dialogue_ratio: 0.18
+  max_staged_dialogue_ratio: 0.62
   max_paragraph_chars: 120
   max_long_paragraphs: 3
   max_em_dash_count: 3
   max_not_but_count: 2
   max_cliche_total: 3
   max_single_cliche: 1
+  max_force_adverbs: 5
+  max_body_cliches: 2
 
-# 绝对禁止的 AI 讲义腔 / 总结陈词 / 本质拔高壳（story-deslop 严控区）
+# 绝对禁止的 AI 讲义腔 / 总结陈词 / 本质拔高壳
 banned_phrases:
   - 总而言之
   - 总的来说
@@ -38,7 +41,7 @@ banned_phrases:
   - 一场风暴正在酝酿
   - 恐怖如斯
 
-# 高频 AI 网文烂大街套话（单章严控）
+# 高频 AI 网文套话
 cliche_phrases:
   - 眼神微眯
   - 嘴角勾起一抹
@@ -59,3 +62,29 @@ cliche_phrases:
   - 泛起一丝涟漪
   - 宛如
   - 犹如
+  - 吐字如铁
+  - 透着一股
+  - 字字咬得
+
+# 深层 AI 指纹 1：暴力剧烈副词（用力过猛）
+force_adverbs:
+  - 猛地
+  - 死死
+  - 狠狠
+  - 骤然
+  - 陡然
+  - 轰然
+  - 硬生生
+  - 斩钉截铁
+
+# 深层 AI 指纹 2：AI 生理广播体操词（舞台剧症候群）
+body_cliches:
+  - 喉结
+  - 眼皮狂跳
+  - 后槽牙
+  - 喉咙发干
+  - 浑身一僵
+  - 鼻腔发酸
+  - 彻底懵了
+  - 咽了口
+  - 一怔

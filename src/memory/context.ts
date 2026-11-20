@@ -5,10 +5,10 @@ const MAX_CONTEXT_CHARS = 9500;
 
 export function buildFoundationSummary(state: BookState): string {
   const f = state.foundation;
+  // 注意：不注入营销简介 blurb，防止简介中的后期爆点/核心反转绕过双时间线提前剧透到前几章
   return [
     `书名：${f.title}`,
     `题材：${f.genre}`,
-    `简介：${f.blurb}`,
     `核心卖点：${f.core_selling_point}`,
     `金手指名称：${f.golden_finger_name}`,
     `金手指规则：${f.golden_finger_rules}`,

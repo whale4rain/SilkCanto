@@ -7,8 +7,8 @@
     "silkcanto": "./dist/cli.js"
   },
   "scripts": {
-    "silkcanto": "tsx src/cli.ts",
-    "dev": "tsx src/cli.ts",
+    "silkcanto": "node --use-env-proxy --import tsx src/cli.ts",
+    "dev": "node --use-env-proxy --import tsx src/cli.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

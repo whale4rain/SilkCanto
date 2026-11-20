@@ -12,15 +12,37 @@ export const AntiSlopConfigSchema = z.object({
     min_chars: z.number().int().default(1900),
     max_chars: z.number().int().default(2800),
     min_dialogue_ratio: z.number().default(0.18),
+    max_staged_dialogue_ratio: z.number().default(0.68),
     max_paragraph_chars: z.number().int().default(180),
     max_long_paragraphs: z.number().int().default(3),
     max_em_dash_count: z.number().int().default(4),
     max_not_but_count: z.number().int().default(3),
     max_cliche_total: z.number().int().default(4),
     max_single_cliche: z.number().int().default(2),
+    max_force_adverbs: z.number().int().default(6),
+    max_body_cliches: z.number().int().default(2),
   }),
   banned_phrases: z.array(z.string()).default([]),
   cliche_phrases: z.array(z.string()).default([]),
+  force_adverbs: z.array(z.string()).default([
+    '猛地',
+    '死死',
+    '狠狠',
+    '骤然',
+    '陡然',
+    '轰然',
+    '硬生生',
+  ]),
+  body_cliches: z.array(z.string()).default([
+    '喉结',
+    '眼皮狂跳',
+    '后槽牙',
+    '喉咙发干',
+    '浑身一僵',
+    '鼻腔发酸',
+    '彻底懵了',
+    '咽了口',
+  ]),
 });
 export type AntiSlopConfig = z.infer<typeof AntiSlopConfigSchema>;
 
@@ -50,6 +72,7 @@ export const RecipeConfigSchema = z.object({
       foundation: z.string().default(''),
       beat: z.string().default(''),
       draft: z.string().default(''),
+      deslop: z.string().default(''),
       critic: z.string().default(''),
       commit: z.string().default(''),
     })
@@ -60,6 +83,7 @@ export const RecipeConfigSchema = z.object({
       foundation: z.number().default(0.7),
       beat: z.number().default(0.5),
       draft: z.number().default(0.85),
+      deslop: z.number().default(0.65),
       critic: z.number().default(0.2),
       commit: z.number().default(0.1),
     })
@@ -98,6 +122,7 @@ export function getRuntimeConfig(cwd = process.cwd()): RuntimeConfig {
     foundation: process.env.SILKCANTO_MODEL_FOUNDATION || undefined,
     beat: process.env.SILKCANTO_MODEL_BEAT || undefined,
     draft: process.env.SILKCANTO_MODEL_DRAFT || undefined,
+    deslop: process.env.SILKCANTO_MODEL_DESLOP || undefined,
     critic: process.env.SILKCANTO_MODEL_CRITIC || undefined,
     commit: process.env.SILKCANTO_MODEL_COMMIT || undefined,
   };

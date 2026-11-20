@@ -15,6 +15,7 @@ import {
 import { generateBeatSheet, generateChapterDraft } from '../pipeline/chapter.js';
 import { applyCommitDelta, extractChapterCommit } from '../pipeline/committer.js';
 import { runChapterCritic } from '../pipeline/critic.js';
+import { runChapterDeslop } from '../pipeline/deslop.js';
 import { formatLintSummary, lintChapterText } from '../pipeline/linter.js';
 
 export interface RunEngineOptions {
@@ -108,7 +109,20 @@ export async function runChapterPipeline(
       draft = draftRes.text;
       recordCost(state, draftRes.cost);
 
-      // Phase 3a: 零 Token 代码 Linter
+      // Phase 2b: 独立口语化洗稿降味步 (Deslop / Humanizer Pass)
+      const deslopRes = await runChapterDeslop({
+        draft,
+        beat,
+        recipe,
+        llm,
+      });
+      if (deslopRes) {
+        draft = deslopRes.text;
+        recordCost(state, deslopRes.cost);
+        onLog?.(`[第 ${chNum} 章] 已完成独立 Deslop 去 AI 味洗稿`);
+      }
+
+      // Phase 3a: 零 Token 代码深层 Linter
       const lint = lintChapterText(draft, recipe.antiSlop);
       lastLint = lint;
       saveJsonReport(
@@ -118,7 +132,7 @@ export async function runChapterPipeline(
         lint,
       );
       onLog?.(
-        `[第 ${chNum} 章] 代码 Linter：${lint.passed ? '通过' : '未通过'}（${lint.score}/10，${lint.metrics.chinese_chars}字，对话${(lint.metrics.dialogue_ratio * 100).toFixed(1)}%）`,
+        `[第 ${chNum} 章] 代码 Linter：${lint.passed ? '通过' : '未通过'}（${lint.score}/10，${lint.metrics.chinese_chars}字，对话${(lint.metrics.dialogue_ratio * 100).toFixed(1)}%，舞台前缀${(lint.metrics.staged_dialogue_ratio * 100).toFixed(1)}%）`,
       );
 
       // Phase 3b: LLM 一致性与番茄读者评审

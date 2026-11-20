@@ -5,6 +5,7 @@ export const PipelineStageSchema = z.enum([
   'foundation',
   'beat',
   'draft',
+  'deslop',
   'critic',
   'commit',
 ]);
@@ -118,11 +119,14 @@ export const TextMetricsSchema = z.object({
   max_paragraph_chars: z.number().int(),
   long_paragraph_count: z.number().int(),
   dialogue_ratio: z.number(),
+  staged_dialogue_ratio: z.number().default(0),
   short_sentence_ratio: z.number(),
   em_dash_count: z.number().int(),
   not_but_count: z.number().int(),
   banned_hits: z.record(z.number().int()),
   cliche_hits: z.record(z.number().int()),
+  force_adverb_hits: z.record(z.number().int()).default({}),
+  body_cliche_hits: z.record(z.number().int()).default({}),
 });
 export type TextMetrics = z.infer<typeof TextMetricsSchema>;
 

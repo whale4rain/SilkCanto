@@ -1,35 +1,36 @@
 name: dafeng_mystery
-display_name: 架空高武王朝 × 现代专业降维探案 × 轻喜剧爽文（融合去AI味 story-deslop）
+display_name: 架空高武王朝 × 现代专业降维探案 × 轻喜剧爽文（双步 Deslop 去AI味版）
 platform: fanqie
 genre: 架空高武悬疑爽文
 description: >-
-  基于《大奉打更人》前10章拆书基因 + 社区 story-deslop / 体验模型去 AI 味规范沉淀的实战配方。
-  强调开局死局倒计时、现代专业常识降维打击超凡盲区、极短手机端段落、五感脏细节与公堂高燃交锋。
+  基于《大奉打更人》前10章拆书基因 + 独立 Deslop 口语化洗稿步 + 深层 AI 指纹 Linter 的实战配方。
+  强调松弛的活人感、极简裸对白交锋、现代专业常识降维打击超凡盲区与手机端短段节奏。
 
 targets:
   target_chapters_for_contract: 10
   chapter_min_chars: 1950
-  chapter_max_chars: 2600
+  chapter_max_chars: 2550
   opening_race_variants: 3
   max_rewrite_retries: 2
-  critic_pass_score: 7.2
+  critic_pass_score: 7.0
 
 style_guide:
   pov: 第三人称限知视角（紧贴主角，严守 reader_known 信息边界）
-  pacing: 开局500字内必须给出感官刺激+死局倒计时；每章至少1次认知反转或博弈压迫，章末硬切强钩子
-  paragraph_style: 极致手机端短段（均段25-65字，最长不超过110字），高频短句、多强动词、用五感脏细节替代抽象总结
+  pacing: 开局自然带出困境与倒计时，允许穿插少量松弛活人吐槽；章末停在冲突动作或反问上
+  paragraph_style: 手机端短段与中段错落（均段25-65字，最长不超过120字），大量直接裸对白，少副词、多白描
   forbidden_habits:
-    - 严禁现代梗与搞笑吐槽污染公堂/官方正式台词（现代网感仅限主角内心独白或私下亲近拌嘴）
-    - 严禁开篇脱离生死危机干瘪科普世界观或修炼体系
-    - 严禁冲突结束后追加上帝视角解说旁白（如“这不仅体现了主角的机智…”“空气中弥漫着紧张…”）
-    - 严禁把高阶配角写成无脑反派（大佬陷入盲区源于思维惯性，点破后须能迅速反应）
-    - 严禁使用排比对仗壳、二分对照壳、讲义路标词与章末鸡汤升华
+    - 严禁对话前高频堆砌“喉结滚动/眼皮狂跳/咬紧后槽牙/浑身一僵”等舞台剧广播体操
+    - 严禁满屏“猛地/死死/狠狠/骤然/轰然”等暴力副词过载
+    - 严禁把现代专业术语（如物理账面、交叉稽核）直接说给古代配角听
+    - 严禁在动作或细节后替读者写“心理说明书”或上帝视角解说旁白
+    - 严禁章末抒情鸡汤或预告片口号式金句
 
 models:
   deconstruct: ""
   foundation: ""
   beat: ""
   draft: ""
+  deslop: ""
   critic: ""
   commit: ""
 
@@ -38,5 +39,6 @@ temperatures:
   foundation: 0.7
   beat: 0.5
   draft: 0.85
+  deslop: 0.7
   critic: 0.2
   commit: 0.1
