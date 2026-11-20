@@ -1,6 +1,6 @@
 # 零 Token 确定性去 AI 味 Linter（表层禁词 + 深层 AI 指纹检测）
 limits:
-  min_chars: 1850
+  min_chars: 1650
   max_chars: 2850
   min_dialogue_ratio: 0.18
   max_staged_dialogue_ratio: 0.62

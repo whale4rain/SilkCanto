@@ -4,7 +4,7 @@ import { Command } from 'commander';
 import pc from 'picocolors';
 import { getRuntimeConfig, loadRecipe } from './config.js';
 import { runChapterPipeline } from './core/engine.js';
-import { VercelLLMClient } from './core/llm.js';
+import { formatCostTelemetry, VercelLLMClient } from './core/llm.js';
 import { exportBookForFanqie } from './exporter.js';
 import {
   listAllBookIds,
@@ -21,8 +21,17 @@ import {
 import { runFoundationInit } from './pipeline/foundation.js';
 import { formatLintSummary, lintChapterText } from './pipeline/linter.js';
 import { runOpeningRace, selectRaceVariant } from './pipeline/racer.js';
+import { startWebServer } from './server.js';
 
 const program = new Command();
+
+function createObservedLLM(runtime: ReturnType<typeof getRuntimeConfig>) {
+  return new VercelLLMClient(runtime, {
+    onTelemetry: (record) => {
+      console.log(pc.dim(formatCostTelemetry(record)));
+    },
+  });
+}
 
 program
   .name('silkcanto')
@@ -40,18 +49,35 @@ program
         `正在测试连接：${runtime.baseUrl} | 模型：${runtime.defaultModel} ...`,
       ),
     );
-    const llm = new VercelLLMClient(runtime);
+    const llm = createObservedLLM(runtime);
     const res = await llm.generateText({
       stage: 'beat',
       prompt: '请只回复两个字：联通',
       temperature: 0,
+      reasoningEffort: 'low',
     });
     console.log(pc.green(`✔ API 连通成功！模型回复：${res.text}`));
-    console.log(
-      pc.dim(
-        `Token：输入 ${res.cost.prompt_tokens} / 输出 ${res.cost.completion_tokens}`,
-      ),
-    );
+  });
+
+// models: 拉取当前 Provider 可用的精确模型 ID 列表
+program
+  .command('models')
+  .description('查询当前配置的 API Provider 返回的可用模型 ID 列表')
+  .action(async () => {
+    const runtime = getRuntimeConfig();
+    const url = `${runtime.baseUrl.replace(/\/+$/, '')}/models`;
+    console.log(pc.cyan(`正在查询可用模型列表：${url} ...`));
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${runtime.apiKey}` },
+    });
+    if (!res.ok) {
+      throw new Error(`查询失败 HTTP ${res.status}: ${await res.text()}`);
+    }
+    const json = (await res.json()) as { data?: Array<{ id: string; owned_by?: string }> };
+    const list = json.data ?? [];
+    for (const m of list) {
+      console.log(`- ${pc.green(m.id)}${m.owned_by ? pc.dim(` (${m.owned_by})`) : ''}`);
+    }
   });
 
 // 0. 拆书分析
@@ -75,7 +101,7 @@ program
         return;
       }
 
-      const llm = new VercelLLMClient(runtime);
+      const llm = createObservedLLM(runtime);
       console.log(pc.cyan(`正在拆解参考样章：${refPath} ...`));
       const res = await runDeconstruct({
         refPath,
@@ -112,7 +138,7 @@ program
       opts: { idea: string; recipe: string; force: boolean },
     ) => {
       const runtime = getRuntimeConfig();
-      const llm = new VercelLLMClient(runtime);
+      const llm = createObservedLLM(runtime);
       console.log(pc.cyan(`正在初始化书籍 "${bookId}"（配方：${opts.recipe}）...`));
 
       const state = await runFoundationInit({
@@ -193,7 +219,7 @@ program
       opts: { toChapter: string; forceChapter?: string },
     ) => {
       const runtime = getRuntimeConfig();
-      const llm = new VercelLLMClient(runtime);
+      const llm = createObservedLLM(runtime);
       const toChapter = Number(opts.toChapter) || 10;
       const forceChapter = opts.forceChapter
         ? Number(opts.forceChapter)
@@ -268,16 +294,30 @@ program
     }
 
     const table = new Table({
-      head: ['Book ID', '书名', '阶段', '已Commit/规划', '总汉字数', '挂起章', '费用(¥)', '最近断点'],
+      head: [
+        'Book ID',
+        '书名',
+        '阶段',
+        '已Commit',
+        '总汉字',
+        'Token/字',
+        '缓存命中',
+        '费用(¥)',
+        '最近断点',
+      ],
     });
 
     for (const id of ids) {
       const st = loadBookState(runtime.workspaceDir, id);
       const committed = st.chapters.filter((c) => c.status === 'committed');
-      const suspended = st.chapters
-        .filter((c) => c.status === 'needs_review')
-        .map((c) => `第${c.chapter}章`);
       const totalChars = committed.reduce((acc, c) => acc + (c.chinese_chars ?? 0), 0);
+      const totalTokens = st.cost.total_prompt_tokens + st.cost.total_completion_tokens;
+      const tokensPerChar =
+        totalChars > 0 ? `${(totalTokens / totalChars).toFixed(1)}x` : '-';
+      const cacheRate =
+        st.cost.total_prompt_tokens > 0
+          ? `${((st.cost.total_cached_input_tokens / st.cost.total_prompt_tokens) * 100).toFixed(1)}%`
+          : '0.0%';
       const latestCp = readLatestCheckpoint(runtime.workspaceDir, id);
 
       table.push([
@@ -286,7 +326,8 @@ program
         st.phase === 'NEEDS_REVIEW' ? pc.red(st.phase) : pc.cyan(st.phase),
         `${committed.length}/${st.volume_plan.length}`,
         totalChars.toLocaleString(),
-        suspended.length > 0 ? pc.red(suspended.join(',')) : pc.green('无'),
+        tokensPerChar,
+        cacheRate,
         st.cost.total_cost_cny.toFixed(4),
         latestCp ? `ch${latestCp.chapter}:${latestCp.step}` : '-',
       ]);
@@ -296,12 +337,139 @@ program
 
     if (bookId) {
       const st = loadBookState(runtime.workspaceDir, bookId);
+      const cacheRate =
+        st.cost.total_prompt_tokens > 0
+          ? ((st.cost.total_cached_input_tokens / st.cost.total_prompt_tokens) * 100).toFixed(1)
+          : '0.0';
+      const reasonRate =
+        st.cost.total_completion_tokens > 0
+          ? ((st.cost.total_reasoning_tokens / st.cost.total_completion_tokens) * 100).toFixed(1)
+          : '0.0';
       console.log(
         pc.dim(
-          `\nToken 累计：输入 ${st.cost.total_prompt_tokens.toLocaleString()} / 输出 ${st.cost.total_completion_tokens.toLocaleString()} | 调用次数：${st.cost.calls.length}`,
+          `\nToken 累计：输入 ${st.cost.total_prompt_tokens.toLocaleString()}（缓存 ${st.cost.total_cached_input_tokens.toLocaleString()} / ${cacheRate}%）| 输出 ${st.cost.total_completion_tokens.toLocaleString()}（思考 ${st.cost.total_reasoning_tokens.toLocaleString()} / ${reasonRate}%）| 调用 ${st.cost.calls.length} 次`,
         ),
       );
     }
+  });
+
+// 6b. 深度观测报表（Token 效率、缓存命中率、思考占比、各阶段耗时）
+program
+  .command('metrics <bookId>')
+  .description('查看单书深度观测报表：Token/正文汉字比、缓存命中率、思考占比与各阶段耗时')
+  .action((bookId: string) => {
+    const runtime = getRuntimeConfig();
+    const st = loadBookState(runtime.workspaceDir, bookId);
+    const calls = st.cost.calls;
+
+    const committed = st.chapters.filter((c) => c.status === 'committed');
+    const finalChars = committed.reduce((acc, c) => acc + (c.chinese_chars ?? 0), 0);
+    const totalIn = st.cost.total_prompt_tokens;
+    const totalCached = st.cost.total_cached_input_tokens;
+    const totalOut = st.cost.total_completion_tokens;
+    const totalReason = st.cost.total_reasoning_tokens;
+    const totalTok = totalIn + totalOut;
+
+    console.log(pc.cyan(`\n=== SilkCanto 观测仪表盘：《${st.foundation.title}》(${bookId}) ===\n`));
+    console.log(`- 已 Commit 正文：${committed.length} 章 / ${finalChars.toLocaleString()} 汉字`);
+    console.log(
+      `- 总 Token 消耗：${totalTok.toLocaleString()}（输入 ${totalIn.toLocaleString()} + 输出 ${totalOut.toLocaleString()}）`,
+    );
+    console.log(
+      `- Token / 最终汉字比：${finalChars > 0 ? `${(totalTok / finalChars).toFixed(2)} tok/字（其中输出 ${(totalOut / finalChars).toFixed(2)} tok/字）` : '暂无成品章节'}`,
+    );
+    console.log(
+      `- Prompt 缓存命中率：${totalIn > 0 ? `${((totalCached / totalIn) * 100).toFixed(1)}%（${totalCached.toLocaleString()} / ${totalIn.toLocaleString()}）` : '0.0%'}`,
+    );
+    console.log(
+      `- 思考 Token 占比：${totalOut > 0 ? `${((totalReason / totalOut) * 100).toFixed(1)}%（${totalReason.toLocaleString()} / ${totalOut.toLocaleString()}）` : '0.0%'}`,
+    );
+    console.log(
+      `- 累计记录耗时：${(st.cost.total_duration_ms / 1000).toFixed(1)}s | 估算总费用：¥${st.cost.total_cost_cny.toFixed(4)}`,
+    );
+
+    // 1. 按阶段汇总表
+    const stageMap = new Map<
+      string,
+      {
+        calls: number;
+        inTok: number;
+        cachedTok: number;
+        outTok: number;
+        reasonTok: number;
+        durMs: number;
+        retries: number;
+        fallbacks: number;
+      }
+    >();
+    for (const c of calls) {
+      const prev = stageMap.get(c.stage) ?? {
+        calls: 0,
+        inTok: 0,
+        cachedTok: 0,
+        outTok: 0,
+        reasonTok: 0,
+        durMs: 0,
+        retries: 0,
+        fallbacks: 0,
+      };
+      prev.calls += 1;
+      prev.inTok += c.prompt_tokens;
+      prev.cachedTok += c.cached_input_tokens ?? 0;
+      prev.outTok += c.completion_tokens;
+      prev.reasonTok += c.reasoning_tokens ?? 0;
+      prev.durMs += c.duration_ms ?? 0;
+      prev.retries += c.retries ?? 0;
+      prev.fallbacks += c.used_fallback ? 1 : 0;
+      stageMap.set(c.stage, prev);
+    }
+
+    const stageTable = new Table({
+      head: ['阶段', '次数', '输入Tok', '缓存命中', '输出Tok', '思考Tok', '总耗时', '均耗时', '重试/降级'],
+    });
+    for (const [stage, d] of stageMap.entries()) {
+      const cachePct = d.inTok > 0 ? `${((d.cachedTok / d.inTok) * 100).toFixed(1)}%` : '0.0%';
+      stageTable.push([
+        stage,
+        d.calls,
+        d.inTok.toLocaleString(),
+        cachePct,
+        d.outTok.toLocaleString(),
+        d.reasonTok.toLocaleString(),
+        d.durMs > 0 ? `${(d.durMs / 1000).toFixed(1)}s` : '-',
+        d.durMs > 0 ? `${(d.durMs / d.calls / 1000).toFixed(1)}s` : '-',
+        `${d.retries}/${d.fallbacks}`,
+      ]);
+    }
+    console.log(pc.bold('\n[按阶段消耗与耗时拆解]'));
+    console.log(stageTable.toString());
+
+    // 2. 按章节产出效率表
+    const chTable = new Table({
+      head: ['章节', '汉字数', '调用次', '输入Tok', '输出Tok', 'Token/字比', '缓存命中', '耗时'],
+    });
+    for (const ch of st.chapters.filter((c) => c.status === 'committed' || c.status === 'needs_review')) {
+      const chCalls = calls.filter((c) => c.chapter === ch.chapter);
+      const inSum = chCalls.reduce((a, b) => a + b.prompt_tokens, 0);
+      const cacheSum = chCalls.reduce((a, b) => a + (b.cached_input_tokens ?? 0), 0);
+      const outSum = chCalls.reduce((a, b) => a + b.completion_tokens, 0);
+      const durSum = chCalls.reduce((a, b) => a + (b.duration_ms ?? 0), 0);
+      const chars = ch.chinese_chars ?? 0;
+      const ratio = chars > 0 ? `${((inSum + outSum) / chars).toFixed(1)}x` : '-';
+      const cachePct = inSum > 0 ? `${((cacheSum / inSum) * 100).toFixed(1)}%` : '0.0%';
+      chTable.push([
+        `第${ch.chapter}章`,
+        chars.toLocaleString(),
+        chCalls.length,
+        inSum.toLocaleString(),
+        outSum.toLocaleString(),
+        ratio,
+        cachePct,
+        durSum > 0 ? `${(durSum / 1000).toFixed(1)}s` : '-',
+      ]);
+    }
+    console.log(pc.bold('\n[按章节产出效率（含历史重试总账）]'));
+    console.log(chTable.toString());
   });
 
 // 7. 番茄投稿导出
@@ -316,6 +484,16 @@ program
     console.log(`- 合并投稿文件：${res.mergedTxtPath}`);
     console.log(`- 质检与成本摘要：${res.summaryPath}`);
     console.log(`- 导出总汉字数：${res.totalChineseChars.toLocaleString()} 字`);
+  });
+
+// 8. 启动本地 Web GUI 中控台
+program
+  .command('ui')
+  .description('启动 SilkCanto（锦章）Web GUI 中控台（含观测仪表盘、人工精修、拆书与实时 SSE 日志）')
+  .option('-p, --port <port>', '监听端口', '4173')
+  .action((opts: { port: string }) => {
+    const port = Number(opts.port) || 4173;
+    startWebServer({ port, host: '127.0.0.1' });
   });
 
 program.parseAsync(process.argv).catch((err: unknown) => {

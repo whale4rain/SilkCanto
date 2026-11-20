@@ -1,7 +1,75 @@
+import { formatStyleGuide, type LoadedRecipe } from '../config.js';
 import type { BookState } from './schema.js';
 import { readChapterBody } from './store.js';
 
 const MAX_CONTEXT_CHARS = 9500;
+
+/**
+ * 构建跨阶段/跨章节完全稳定的静态 System 前缀，最大化触发
+ * Gemini Implicit Context Caching 与 DeepSeek Prefix Caching。
+ */
+export function buildBookSystemPrompt(
+  state: BookState,
+  recipe: LoadedRecipe,
+): string {
+  const f = state.foundation;
+  const staticCast = state.characters
+    .slice(0, 8)
+    .map((c) => `- ${c.name}（${c.role}）| 性格锚点：${c.personality} | 语言习惯：${c.speech_style}`)
+    .join('\n');
+
+  const volumeOverview = state.volume_plan
+    .slice(0, 12)
+    .map((p) => `- 第${p.chapter}章《${p.title}》：${p.goal}`)
+    .join('\n');
+
+  return [
+    `# SilkCanto（锦章）静态作品圣经（跨阶段共享缓存前缀）`,
+    '',
+    `## 一、书籍核心设定（严守规则，绝不吃书）`,
+    `- 书名：${f.title}`,
+    `- 题材：${f.genre}`,
+    `- 核心卖点：${f.core_selling_point}`,
+    `- 金手指名称：${f.golden_finger_name}`,
+    `- 金手指规则：${f.golden_finger_rules}`,
+    `- 金手指硬性限制：${f.golden_finger_limits}`,
+    `- 主线目标：${f.main_goal}`,
+    '',
+    `## 二、赛道风格铁律与去 AI 味红线`,
+    formatStyleGuide(recipe.config),
+    '',
+    `## 三、核心人物静态锚点`,
+    staticCast || '- 暂无',
+    '',
+    `## 四、本卷章目目标概览（仅作方向参考，禁止提前剧透未发生剧情）`,
+    volumeOverview || '- 暂无',
+    '',
+    `## 五、叙事全局底线`,
+    `1. 严格区分 author_truth（作者上帝视角）与 reader_known（读者/主角已知），禁止角色越界提前说出未公开真相。`,
+    `2. 严禁讲义腔、翻译腔、舞台剧广播体操式对话前缀与心理说明书，所有输出必须精准服务于当前阶段任务。`,
+  ].join('\n');
+}
+
+/**
+ * 构建单章内 5 步（beat -> draft -> deslop -> critic -> commit）完全共享的缓存 System 前缀：
+ * 静态作品圣经 + 截至上一章的完整动态记忆切片（同一章内字节级完全不变，直接将缓存命中率拉至 60%+）。
+ */
+export function buildChapterSharedSystemPrompt(
+  workspaceDir: string,
+  state: BookState,
+  recipe: LoadedRecipe,
+  targetChapter: number,
+): string {
+  return [
+    buildBookSystemPrompt(state, recipe),
+    '',
+    `## 六、截至第 ${targetChapter - 1} 章的动态记忆切片（本章各阶段共享事实基准）`,
+    buildStateContext(state, targetChapter),
+    '',
+    `## 七、上一章结尾衔接`,
+    buildPrevChapterTail(workspaceDir, state, targetChapter),
+  ].join('\n');
+}
 
 export function buildFoundationSummary(state: BookState): string {
   const f = state.foundation;

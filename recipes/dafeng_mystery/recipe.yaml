@@ -42,3 +42,12 @@ temperatures:
   deslop: 0.7
   critic: 0.2
   commit: 0.1
+
+reasoning_effort:
+  deconstruct: medium
+  foundation: medium
+  beat: low
+  draft: low
+  deslop: low
+  critic: low
+  commit: low

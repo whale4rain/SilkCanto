@@ -1,14 +1,9 @@
 import {
-  formatStyleGuide,
   renderTemplate,
   type LoadedRecipe,
 } from '../config.js';
 import type { LLMClient } from '../core/llm.js';
-import {
-  buildFoundationSummary,
-  buildPrevChapterTail,
-  buildStateContext,
-} from '../memory/context.js';
+import { buildChapterSharedSystemPrompt } from '../memory/context.js';
 import {
   BeatSheetSchema,
   type BeatSheet,
@@ -45,10 +40,16 @@ export async function generateBeatSheet(params: {
   extraInstruction?: string;
 }): Promise<{ beat: BeatSheet; cost: CostRecord }> {
   const { workspaceDir, state, plan, recipe, llm, extraInstruction } = params;
+  const sharedSystem = buildChapterSharedSystemPrompt(
+    workspaceDir,
+    state,
+    recipe,
+    plan.chapter,
+  );
   const prompt = renderTemplate(recipe.prompts.beat || '', {
-    foundation_summary: buildFoundationSummary(state),
-    state_context: buildStateContext(state, plan.chapter),
-    prev_chapter_tail: buildPrevChapterTail(workspaceDir, state, plan.chapter),
+    foundation_summary: '（见 System 静态作品圣经）',
+    state_context: '（见 System 本章共享动态记忆切片）',
+    prev_chapter_tail: '（见 System 上一章结尾衔接）',
     chapter_number: plan.chapter,
     planned_title: plan.title,
     planned_summary: `${plan.summary}\n本章目标：${plan.goal}\n钩子提示：${plan.hook_hint}`,
@@ -60,6 +61,7 @@ export async function generateBeatSheet(params: {
     chapter: plan.chapter,
     recipe: recipe.config,
     schema: BeatSheetSchema,
+    system: sharedSystem,
     prompt,
   });
 
@@ -79,11 +81,17 @@ export async function generateChapterDraft(params: {
 
   // 细纲门禁：确保细纲有效才允许写正文
   const validatedBeat = BeatSheetSchema.parse(beat);
+  const sharedSystem = buildChapterSharedSystemPrompt(
+    workspaceDir,
+    state,
+    recipe,
+    validatedBeat.chapter,
+  );
 
   const prompt = renderTemplate(recipe.prompts.draft || '', {
-    style_guide: formatStyleGuide(recipe.config),
-    state_context: buildStateContext(state, validatedBeat.chapter),
-    prev_chapter_tail: buildPrevChapterTail(workspaceDir, state, validatedBeat.chapter),
+    style_guide: '（见 System 赛道风格铁律）',
+    state_context: '（见 System 本章共享动态记忆切片）',
+    prev_chapter_tail: '（见 System 上一章结尾衔接）',
     beat_sheet: formatBeatSheet(validatedBeat),
     rewrite_feedback: rewriteFeedback || '（本次为首稿，直接严格按细纲创作。）',
     min_chars: recipe.config.targets.chapter_min_chars,
@@ -94,6 +102,7 @@ export async function generateChapterDraft(params: {
     stage: 'draft',
     chapter: validatedBeat.chapter,
     recipe: recipe.config,
+    system: sharedSystem,
     prompt,
   });
 

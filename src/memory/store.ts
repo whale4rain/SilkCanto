@@ -81,7 +81,10 @@ export function saveBookState(workspaceDir: string, state: BookState): void {
 
 export function recordCost(state: BookState, record: CostRecord): void {
   state.cost.total_prompt_tokens += record.prompt_tokens;
+  state.cost.total_cached_input_tokens += record.cached_input_tokens ?? 0;
   state.cost.total_completion_tokens += record.completion_tokens;
+  state.cost.total_reasoning_tokens += record.reasoning_tokens ?? 0;
+  state.cost.total_duration_ms += record.duration_ms ?? 0;
   state.cost.total_cost_cny = Number(
     (state.cost.total_cost_cny + record.estimated_cost_cny).toFixed(6),
   );

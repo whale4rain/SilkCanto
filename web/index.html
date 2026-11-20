@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SilkCanto</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <!-- Minimal Left Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-top">
+        <button class="brand-btn" id="btnAllBooks" title="查看全部作品总览">
+          <svg class="brand-mark" viewBox="0 0 18 18" fill="none">
+            <rect x="1.5" y="1.5" width="15" height="15" rx="3.5" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M5.5 6.5h7M5.5 9.5h5M5.5 12.5h3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
+          <span class="brand-name">SilkCanto</span>
+        </button>
+        <button class="icon-btn" id="btnNewBook" title="新建作品">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3v10M3 8h10" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+
+      <!-- Custom Minimal Book Switcher -->
+      <div class="switcher-wrap">
+        <button class="switcher-trigger" id="bookSwitcherBtn" aria-haspopup="listbox">
+          <span class="switcher-left">
+            <span id="switcherDot" class="status-dot idle"></span>
+            <span id="switcherLabel" class="switcher-label">选择作品</span>
+          </span>
+          <svg class="ic-xs" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4.5 6.5L8 10l3.5-3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="switcher-menu hidden" id="bookSwitcherMenu"></div>
+      </div>
+
+      <!-- Workspace Navigation -->
+      <nav class="nav-group">
+        <div class="nav-label">作品</div>
+        <button class="nav-item active" data-route="chapters">
+          <svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3.5 3h9M3.5 6.5h9M3.5 10h6M3.5 13h4" stroke-linecap="round"/></svg>
+          <span>章节</span>
+          <span class="nav-count" id="navChapterCount"></span>
+        </button>
+        <button class="nav-item" data-route="metrics">
+          <svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 12.5V8.5M7.5 12.5V4M12 12.5V6.5" stroke-linecap="round"/></svg>
+          <span>观测</span>
+        </button>
+        <button class="nav-item" data-route="ledger">
+          <svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 2.5h8v11H4z"/><path d="M6.5 5.5h3M6.5 8h3M6.5 10.5h2" stroke-linecap="round"/></svg>
+          <span>底账与时间线</span>
+        </button>
+        <button class="nav-item" data-route="outline">
+          <svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="3.5" cy="4.5" r="1"/><circle cx="3.5" cy="8.5" r="1"/><circle cx="3.5" cy="12.5" r="1"/><path d="M6.5 4.5h6M6.5 8.5h6M6.5 12.5h4" stroke-linecap="round"/></svg>
+          <span>卷纲</span>
+        </button>
+      </nav>
+
+      <nav class="nav-group">
+        <div class="nav-label">工具</div>
+        <button class="nav-item" data-route="projects">
+          <svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2.5" y="2.5" width="4.5" height="4.5" rx="1"/><rect x="9" y="2.5" width="4.5" height="4.5" rx="1"/><rect x="2.5" y="9" width="4.5" height="4.5" rx="1"/><rect x="9" y="9" width="4.5" height="4.5" rx="1"/></svg>
+          <span>全部作品</span>
+          <span class="nav-count" id="navBooksTotal"></span>
+        </button>
+        <button class="nav-item" data-route="deconstruct">
+          <svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 3h10v10H3z"/><path d="M3 7h10M7.5 7v6"/></svg>
+          <span>拆书</span>
+        </button>
+        <button class="nav-item" id="btnOpenModelModal">
+          <svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="2.2"/><path d="M8 2v1.5M8 12.5V14M2 8h1.5M12.5 8H14" stroke-linecap="round"/></svg>
+          <span>模型</span>
+          <span class="nav-count mono" id="modelNavHint">deepseek-flash</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button class="log-trigger" id="btnToggleLogs">
+          <span id="consoleDot" class="status-dot idle"></span>
+          <span id="consoleStatus" class="log-trigger-text">就绪</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Canvas -->
+    <main class="canvas">
+      <!-- Top Header -->
+      <header class="header">
+        <div class="breadcrumb">
+          <button class="crumb-root-btn" id="btnCrumbRoot">全部作品</button>
+          <span class="crumb-sep">/</span>
+          <span class="crumb-current" id="headerTitle">—</span>
+        </div>
+
+        <div class="header-actions" id="bookHeaderActions">
+          <button class="btn btn-secondary" id="btnMoreMenu">操作 ▾</button>
+          <button class="btn btn-primary" id="btnSmartPrimary">运行流水线</button>
+          <div class="popover hidden" id="morePopover">
+            <button class="popover-item" id="btnActionRunCustom">自定义续跑章数…</button>
+            <button class="popover-item" id="btnActionRace">黄金三章赛马</button>
+            <button class="popover-item" id="btnActionExport">导出番茄投稿包</button>
+            <div class="popover-sep"></div>
+            <button class="popover-item" id="btnActionRefresh">刷新本地数据</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Non-Intrusive Active Job Strip (Shows progress + Stop button without blocking work) -->
+      <div id="activeJobBar" class="job-strip hidden">
+        <div class="job-strip-left">
+          <span class="status-dot running pulse"></span>
+          <span id="activeJobText">正在运行流水线...</span>
+        </div>
+        <div class="job-strip-right">
+          <button class="btn-inline-link" id="btnJobViewLogs">查看日志</button>
+          <button class="btn-inline-danger" id="btnJobCancel">停止</button>
+        </div>
+      </div>
+
+      <!-- Scrollable Route Content -->
+      <div class="content-scroll" id="contentScroll">
+        <!-- Route 0: All Books Overview (Batch NovelOps Home) -->
+        <section id="route-projects" class="page container-lg hidden">
+          <div class="page-head page-head-row">
+            <div>
+              <h1 class="page-title">全部作品</h1>
+              <div class="page-meta">批量生产进度、签约字数线（20,000 字）与缓存成本一览</div>
+            </div>
+            <button class="btn btn-primary" id="btnProjectsNewBook">新建作品</button>
+          </div>
+          <div id="projectsTable"></div>
+        </section>
+
+        <!-- Route 1A: Chapter List -->
+        <section id="route-chapters-list" class="page container-md hidden">
+          <div class="page-head">
+            <h1 id="chaptersBookTitle" class="page-title">—</h1>
+            <div class="page-meta" id="chaptersBookMeta"></div>
+          </div>
+
+          <!-- Context-aware Action Callout (e.g., Suspended chapter quick jump) -->
+          <div id="contextBanner" class="inline-banner hidden">
+            <div class="inline-banner-left">
+              <span id="contextBannerDot" class="status-dot warn"></span>
+              <span id="contextBannerText"></span>
+            </div>
+            <button class="btn btn-secondary" id="contextBannerAction">前往处理</button>
+          </div>
+
+          <div class="list-header">
+            <span class="col-num">#</span>
+            <span class="col-title">章节</span>
+            <span class="col-num-r">汉字</span>
+            <span class="col-num-r">审校</span>
+            <span class="col-status">状态</span>
+          </div>
+          <div id="chapterRows" class="chapter-rows"></div>
+        </section>
+
+        <!-- Route 1B: Focused Chapter Editor + Non-Blocking Split Inspector -->
+        <section id="route-chapter-detail" class="page page-editor hidden">
+          <div class="editor-topbar">
+            <div class="editor-bar-left">
+              <button class="btn-ghost-back" id="btnBackToList">
+                <svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 3.5L5.5 8 10 12.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span>章节列表</span>
+              </button>
+              <span class="bar-divider"></span>
+              <div class="pager">
+                <button class="icon-btn" id="btnPrevChapter" title="上一章 ([)">
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 3.5L5.5 8 10 12.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <span id="pagerLabel" class="pager-label">01 / 12</span>
+                <button class="icon-btn" id="btnNextChapter" title="下一章 (])">
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 3.5L10.5 8 6 12.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+              </div>
+              <span id="dirtyIndicator" class="dirty-dot hidden">未保存</span>
+            </div>
+
+            <div class="editor-bar-right">
+              <span id="editorStatsInline" class="inline-meta"></span>
+              <button class="btn btn-secondary" id="btnCopyChapter" title="复制本章纯文本粘贴至番茄后台">复制正文</button>
+              <button class="btn btn-secondary" id="btnToggleInspector" title="切换质检侧栏 (⌘I)">质检</button>
+              <button class="btn btn-secondary" id="btnForceRerun">重跑</button>
+              <button class="btn btn-secondary" id="btnSaveChapter" title="保存并复检 (⌘S)">保存</button>
+              <button class="btn btn-primary" id="btnApproveChapter">放行 Commit</button>
+            </div>
+          </div>
+
+          <!-- Split Container: Manuscript stays unobstructed when inspector opens -->
+          <div class="editor-workspace" id="editorWorkspace">
+            <div class="editor-scroll">
+              <article class="prose-wrap">
+                <div class="prose-kicker" id="proseKicker">CHAPTER 01</div>
+                <h1 class="prose-title" id="proseTitle">—</h1>
+
+                <div id="chapterAlertLine" class="prose-alert hidden">
+                  <span class="status-dot warn"></span>
+                  <span id="chapterAlertText"></span>
+                  <button class="btn-inline-link" id="btnAlertOpenInspector">对照修改 →</button>
+                </div>
+
+                <textarea id="chapterTextarea" class="prose-editor" placeholder="本章尚未生成正文，点击右上角「重跑」生成本章..."></textarea>
+              </article>
+            </div>
+
+            <!-- Non-Blocking Split QA Inspector -->
+            <aside id="splitInspector" class="split-inspector hidden">
+              <div class="inspector-head">
+                <span>本章质检</span>
+                <button class="icon-btn" id="btnCloseInspector" title="关闭 (Esc)">✕</button>
+              </div>
+              <div class="inspector-scroll">
+                <div class="drawer-section">
+                  <div class="section-label">零 Token 深层 Linter</div>
+                  <div id="lintKv" class="kv-compact"></div>
+                  <div id="lintIssuesList" class="plain-issues"></div>
+                </div>
+                <div class="drawer-section">
+                  <div class="section-label">编辑审校 Critic</div>
+                  <div id="criticBody" class="drawer-prose"></div>
+                </div>
+                <div class="drawer-section">
+                  <div class="section-label">细纲 Beat Sheet</div>
+                  <div id="beatBody" class="drawer-prose"></div>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <!-- Route 2: Metrics -->
+        <section id="route-metrics" class="page container-lg hidden">
+          <div class="page-head">
+            <h1 class="page-title">观测数据</h1>
+            <div class="page-meta">Token 产出效率、Prompt 缓存命中率、隐藏思考占比与耗时拆解</div>
+          </div>
+
+          <div class="kpi-row" id="metricsKpis"></div>
+
+          <div class="section-gap">
+            <div class="section-label">阶段耗时与缓存</div>
+            <div id="stageBars" class="stage-rows"></div>
+          </div>
+
+          <div class="section-gap">
+            <div class="section-label">单章产出效率</div>
+            <div id="chapterMetricsTable"></div>
+          </div>
+
+          <div class="section-gap">
+            <div class="section-label">最近调用遥测</div>
+            <div id="recentCallsTable"></div>
+          </div>
+        </section>
+
+        <!-- Route 3: Ledger -->
+        <section id="route-ledger" class="page container-lg hidden">
+          <div class="page-head">
+            <h1 class="page-title">底账与双时间线</h1>
+            <div class="page-meta">唯一事实源 state.json · 严格隔离作者真相与读者已知边界</div>
+          </div>
+
+          <div class="section-gap" id="goldenFingerBlock"></div>
+
+          <div class="split-2 section-gap">
+            <div>
+              <div class="section-label">author_truth · 作者真相（禁止提前剧透）</div>
+              <div id="truthList" class="kv-list"></div>
+            </div>
+            <div>
+              <div class="section-label">reader_known · 读者与主角已知</div>
+              <div id="knownList" class="kv-list"></div>
+            </div>
+          </div>
+
+          <div class="section-gap">
+            <div class="section-label">动态角色账本</div>
+            <div id="charactersTable"></div>
+          </div>
+
+          <div class="section-gap">
+            <div class="section-label">伏笔与道具</div>
+            <div id="assetsAndFs"></div>
+          </div>
+        </section>
+
+        <!-- Route 4: Outline -->
+        <section id="route-outline" class="page container-md hidden">
+          <div class="page-head">
+            <h1 class="page-title">卷纲与简介</h1>
+            <div class="page-meta" id="outlineMeta"></div>
+          </div>
+
+          <div class="section-gap">
+            <div class="section-label">简介</div>
+            <p id="bookBlurb" class="blurb-text"></p>
+            <div id="titleCandidates" class="candidates-line"></div>
+          </div>
+
+          <div id="racePanel" class="section-gap hidden"></div>
+
+          <div class="section-gap">
+            <div class="section-label">滚动章节规划</div>
+            <div id="volumePlanList" class="outline-rows"></div>
+          </div>
+        </section>
+
+        <!-- Route 5: Deconstruct -->
+        <section id="route-deconstruct" class="page container-md hidden">
+          <div class="page-head">
+            <h1 class="page-title">拆书</h1>
+            <div class="page-meta">安全读取本地参考样章前 10 章切片，生成节奏指标与可复用配方</div>
+          </div>
+
+          <div class="inline-form section-gap">
+            <label class="field">
+              <span>样章路径（.txt / .md / 目录）</span>
+              <input id="deconRefPath" list="refCandidates" placeholder="./大奉打更人.txt" />
+              <datalist id="refCandidates"></datalist>
+            </label>
+            <label class="field">
+              <span>保存为配方名（可选）</span>
+              <input id="deconOutRecipe" placeholder="留空则仅生成报告" />
+            </label>
+            <div class="form-row-end">
+              <button class="btn btn-secondary" id="btnDeconStats">零 Token 测节奏</button>
+              <button class="btn btn-primary" id="btnDeconFull">执行完整拆书</button>
+            </div>
+          </div>
+
+          <div id="deconQuickStats" class="section-gap hidden"></div>
+
+          <div class="section-label">已有拆书报告</div>
+          <div id="deconstructReports" class="reports-list"></div>
+        </section>
+
+        <!-- Empty State -->
+        <section id="route-empty" class="page empty-page hidden">
+          <div class="empty-inner">
+            <h2>暂无作品</h2>
+            <p>先拆解参考样章，或直接创建一本新书开始验证。</p>
+            <button class="btn btn-primary" id="btnEmptyNewBook">新建作品</button>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <!-- Slide-over Drawer: Live SSE Logs -->
+  <div id="logDrawer" class="drawer hidden">
+    <div class="drawer-scrim" data-close="logDrawer"></div>
+    <aside class="drawer-panel wide">
+      <div class="drawer-head">
+        <span>实时执行日志</span>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn btn-secondary" id="btnClearConsole">清空</button>
+          <button class="icon-btn" data-close="logDrawer">✕</button>
+        </div>
+      </div>
+      <pre id="consoleOutput" class="log-pre"></pre>
+    </aside>
+  </div>
+
+  <!-- Modal: Run Pipeline -->
+  <div id="runModal" class="modal hidden">
+    <div class="modal-scrim" data-close="runModal"></div>
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>运行生产流水线</h3>
+        <button class="icon-btn" data-close="runModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <label class="field">
+          <span>续跑目标章数（已回写章节自动断点跳过）</span>
+          <input id="runToChapter" type="number" min="1" max="50" value="10" />
+        </label>
+        <div class="modal-hint" id="runModelSummary"></div>
+        <div class="form-row-end">
+          <button class="btn btn-secondary" data-close="runModal">取消</button>
+          <button class="btn btn-primary" id="btnConfirmRun">开始运行</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Export Result (One-click Copy for Fanqie) -->
+  <div id="exportModal" class="modal hidden">
+    <div class="modal-scrim" data-close="exportModal"></div>
+    <div class="modal-card wide">
+      <div class="modal-head">
+        <h3>番茄投稿包已就绪</h3>
+        <button class="icon-btn" data-close="exportModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="exportMeta" class="kv-compact"></div>
+        <div class="form-row-end" style="margin-top:6px;">
+          <button class="btn btn-secondary" id="btnCopyExportPath">复制文件路径</button>
+          <button class="btn btn-primary" id="btnCopyExportText">一键复制纯净全文</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Model Settings -->
+  <div id="modelModal" class="modal hidden">
+    <div class="modal-scrim" data-close="modelModal"></div>
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>模型配置</h3>
+        <button class="icon-btn" data-close="modelModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <label class="field">
+          <span>Provider</span>
+          <select id="providerSelect">
+            <option value="deepseek">DeepSeek API (DEEPSEEK_API_KEY)</option>
+            <option value="gemini">Gemini AI Studio (.env)</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>模型</span>
+          <select id="modelSelect"></select>
+        </label>
+        <label class="field">
+          <span>思考档位</span>
+          <select id="effortSelect">
+            <option value="low" selected>low — 关闭隐藏思考（极速低费）</option>
+            <option value="medium">medium — 平衡思考</option>
+            <option value="high">high — 深度思考</option>
+          </select>
+        </label>
+        <div class="form-row-end">
+          <button class="btn btn-primary" data-close="modelModal">完成</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: New Book -->
+  <div id="newBookModal" class="modal hidden">
+    <div class="modal-scrim" data-close="newBookModal"></div>
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>新建作品</h3>
+        <button class="icon-btn" data-close="newBookModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <label class="field">
+          <span>书籍 ID</span>
+          <input id="newBookId" placeholder="qian_audit_02" />
+        </label>
+        <label class="field">
+          <span>配方 Recipe</span>
+          <select id="newBookRecipe"></select>
+        </label>
+        <label class="field">
+          <span>核心脑洞</span>
+          <textarea id="newBookIdea" rows="4" placeholder="用 1–2 句话写清主角、死局冲突与核心金手指..."></textarea>
+        </label>
+        <div class="form-row-end">
+          <button class="btn btn-secondary" data-close="newBookModal">取消</button>
+          <button class="btn btn-primary" id="btnSubmitNewBook">创建并生成卷纲</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Minimal Toast Container -->
+  <div id="toastStack" class="toast-stack"></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

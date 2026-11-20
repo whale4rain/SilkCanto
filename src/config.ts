@@ -3,7 +3,11 @@ import path from 'node:path';
 import dotenv from 'dotenv';
 import YAML from 'yaml';
 import { z } from 'zod';
-import type { PipelineStage } from './memory/schema.js';
+import {
+  ReasoningEffortSchema,
+  type PipelineStage,
+  type ReasoningEffort,
+} from './memory/schema.js';
 
 dotenv.config();
 
@@ -88,6 +92,17 @@ export const RecipeConfigSchema = z.object({
       commit: z.number().default(0.1),
     })
     .default({}),
+  reasoning_effort: z
+    .object({
+      deconstruct: ReasoningEffortSchema.default('medium'),
+      foundation: ReasoningEffortSchema.default('medium'),
+      beat: ReasoningEffortSchema.default('low'),
+      draft: ReasoningEffortSchema.default('low'),
+      deslop: ReasoningEffortSchema.default('low'),
+      critic: ReasoningEffortSchema.default('low'),
+      commit: ReasoningEffortSchema.default('low'),
+    })
+    .default({}),
 });
 export type RecipeConfig = z.infer<typeof RecipeConfigSchema>;
 
@@ -104,6 +119,7 @@ export interface RuntimeConfig {
   baseUrl: string;
   defaultModel: string;
   stageModels: Partial<Record<PipelineStage, string>>;
+  defaultReasoningEffort?: ReasoningEffort;
   inputCostPer1M: number;
   outputCostPer1M: number;
   workspaceDir: string;
@@ -127,16 +143,46 @@ export function getRuntimeConfig(cwd = process.cwd()): RuntimeConfig {
     commit: process.env.SILKCANTO_MODEL_COMMIT || undefined,
   };
 
+  const envEffortRaw = process.env.SILKCANTO_REASONING_EFFORT?.trim();
+  const defaultReasoningEffort = envEffortRaw
+    ? ReasoningEffortSchema.parse(envEffortRaw)
+    : undefined;
+
+  const providerMode = process.env.SILKCANTO_PROVIDER?.trim().toLowerCase();
+  const useDeepSeekPreset =
+    providerMode === 'deepseek' ||
+    (!process.env.SILKCANTO_API_KEY && Boolean(process.env.DEEPSEEK_API_KEY));
+
+  const apiKey = useDeepSeekPreset
+    ? process.env.DEEPSEEK_API_KEY || process.env.SILKCANTO_API_KEY || ''
+    : process.env.SILKCANTO_API_KEY || '';
+  const baseUrl = useDeepSeekPreset
+    ? process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com/v1'
+    : process.env.SILKCANTO_BASE_URL || 'https://api.deepseek.com/v1';
+  const defaultModel = useDeepSeekPreset
+    ? process.env.DEEPSEEK_MODEL || 'deepseek-flash'
+    : process.env.SILKCANTO_DEFAULT_MODEL || 'deepseek-v4-pro';
+
   return {
-    apiKey: process.env.SILKCANTO_API_KEY || '',
-    baseUrl: process.env.SILKCANTO_BASE_URL || 'https://api.deepseek.com/v1',
-    defaultModel: process.env.SILKCANTO_DEFAULT_MODEL || 'ds-pro',
+    apiKey,
+    baseUrl,
+    defaultModel,
     stageModels,
+    defaultReasoningEffort,
     inputCostPer1M: Number(process.env.SILKCANTO_INPUT_COST_PER_1M || 2.0),
     outputCostPer1M: Number(process.env.SILKCANTO_OUTPUT_COST_PER_1M || 8.0),
     workspaceDir,
     recipesDir,
   };
+}
+
+export function resolveReasoningEffortForStage(
+  runtime: RuntimeConfig,
+  recipe: RecipeConfig | undefined,
+  stage: PipelineStage,
+): ReasoningEffort | undefined {
+  if (runtime.defaultReasoningEffort) return runtime.defaultReasoningEffort;
+  return recipe?.reasoning_effort?.[stage];
 }
 
 export function resolveModelForStage(

@@ -24,6 +24,7 @@ export interface RunEngineOptions {
   runtime: RuntimeConfig;
   llm: LLMClient;
   forceChapter?: number;
+  shouldStop?: () => boolean;
   onLog?: (msg: string) => void;
 }
 
@@ -31,13 +32,14 @@ export interface RunEngineSummary {
   bookId: string;
   committedChapters: number[];
   suspendedChapter?: number;
+  cancelled?: boolean;
   phase: BookState['phase'];
 }
 
 export async function runChapterPipeline(
   options: RunEngineOptions,
 ): Promise<RunEngineSummary> {
-  const { bookId, toChapter, runtime, llm, forceChapter, onLog } = options;
+  const { bookId, toChapter, runtime, llm, forceChapter, shouldStop, onLog } = options;
   const state = loadBookState(runtime.workspaceDir, bookId);
   const recipe = loadRecipe(state.recipe, runtime.recipesDir);
   const maxRetries = recipe.config.targets.max_rewrite_retries;
@@ -47,6 +49,16 @@ export async function runChapterPipeline(
   saveBookState(runtime.workspaceDir, state);
 
   for (let chNum = 1; chNum <= toChapter; chNum++) {
+    if (shouldStop?.()) {
+      onLog?.('[任务已取消] 已在第 ' + chNum + ' 章开始前安全停止，已保存全部断点。');
+      return {
+        bookId,
+        committedChapters,
+        cancelled: true,
+        phase: state.phase,
+      };
+    }
+
     let record = ensureChapterRecord(state, chNum);
 
     if (record.status === 'committed' && forceChapter !== chNum) {
@@ -111,6 +123,8 @@ export async function runChapterPipeline(
 
       // Phase 2b: 独立口语化洗稿降味步 (Deslop / Humanizer Pass)
       const deslopRes = await runChapterDeslop({
+        workspaceDir: runtime.workspaceDir,
+        state,
         draft,
         beat,
         recipe,
@@ -135,8 +149,20 @@ export async function runChapterPipeline(
         `[第 ${chNum} 章] 代码 Linter：${lint.passed ? '通过' : '未通过'}（${lint.score}/10，${lint.metrics.chinese_chars}字，对话${(lint.metrics.dialogue_ratio * 100).toFixed(1)}%，舞台前缀${(lint.metrics.staged_dialogue_ratio * 100).toFixed(1)}%）`,
       );
 
+      // 省 Token 优化：零 Token 代码 Linter 已硬性失败且仍有重试额度时，直接跳过 LLM Critic 打回重写
+      if (!lint.passed && retry < maxRetries) {
+        onLog?.(
+          `[第 ${chNum} 章] 代码 Linter 未过，跳过 LLM Critic 直接带问题清单重写（省 1 次审校调用）...`,
+        );
+        rewriteFeedback = `【必须修复的代码 Linter 硬性问题】\n${formatLintSummary(lint)}`;
+        record.retries = retry + 1;
+        saveBookState(runtime.workspaceDir, state);
+        continue;
+      }
+
       // Phase 3b: LLM 一致性与番茄读者评审
       const criticRes = await runChapterCritic({
+        workspaceDir: runtime.workspaceDir,
         state,
         beat,
         chapterContent: draft,
@@ -220,6 +246,7 @@ export async function runChapterPipeline(
     // Step 4: Commit 事实抽取与唯一底账回写
     onLog?.(`[第 ${chNum} 章] 质检通过，正在抽取事实并回写 state.json...`);
     const commitRes = await extractChapterCommit({
+      workspaceDir: runtime.workspaceDir,
       state,
       chapterNumber: chNum,
       chapterContent: draft,

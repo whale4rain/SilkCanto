@@ -11,9 +11,24 @@
 cp .env.example .env
 ```
 
-### 2. 全链路使用命令
+### 2. 启动 Web GUI 中控台（推荐）
 
 ```bash
+pnpm ui
+# 启动后访问 http://127.0.0.1:4173
+# 支持：多书看板、一键开新书/拆书/续跑/黄金三章赛马、章节人工精修与 Linter 复检、
+#       唯一底账与双时间线视图、深度观测仪表盘（Token/字比、缓存命中率、耗时）、SSE 实时遥测
+```
+
+### 3. CLI 全链路命令
+
+```bash
+# 测通模型与列出当前 Provider 可用模型 ID
+pnpm silkcanto ping
+pnpm silkcanto models
+
+# 查看单书深度观测仪表盘（Token/汉字比、缓存命中率、思考占比、各阶段耗时）
+pnpm silkcanto metrics book_01
 # 0. 初始化前：拆解番茄爆款样章（支持单文件或章节目录）
 #    先零 Token 跑定量节奏统计：
 pnpm silkcanto deconstruct ./workspace/references/sample_dir --stats-only

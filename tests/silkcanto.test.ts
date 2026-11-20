@@ -71,7 +71,12 @@ function createMockLLM(opts?: { failCritic?: boolean; sloppyDraft?: boolean }): 
     model: 'ds-pro',
     chapter,
     prompt_tokens: 500,
+    cached_input_tokens: 200,
     completion_tokens: 400,
+    reasoning_tokens: 50,
+    duration_ms: 1200,
+    retries: 0,
+    used_fallback: false,
     estimated_cost_cny: 0.0042,
   });
 

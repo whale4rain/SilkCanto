@@ -1,6 +1,6 @@
 import { renderTemplate, type LoadedRecipe } from '../config.js';
 import type { LLMClient } from '../core/llm.js';
-import { buildFoundationSummary, buildStateContext } from '../memory/context.js';
+import { buildChapterSharedSystemPrompt } from '../memory/context.js';
 import {
   CriticReportSchema,
   type BeatSheet,
@@ -13,6 +13,7 @@ import { formatBeatSheet } from './chapter.js';
 import { formatLintSummary } from './linter.js';
 
 export async function runChapterCritic(params: {
+  workspaceDir: string;
   state: BookState;
   beat: BeatSheet;
   chapterContent: string;
@@ -20,11 +21,17 @@ export async function runChapterCritic(params: {
   recipe: LoadedRecipe;
   llm: LLMClient;
 }): Promise<{ report: CriticReport; cost: CostRecord }> {
-  const { state, beat, chapterContent, lintResult, recipe, llm } = params;
+  const { workspaceDir, state, beat, chapterContent, lintResult, recipe, llm } = params;
+  const sharedSystem = buildChapterSharedSystemPrompt(
+    workspaceDir,
+    state,
+    recipe,
+    beat.chapter,
+  );
 
   const prompt = renderTemplate(recipe.prompts.critic || '', {
-    foundation_summary: buildFoundationSummary(state),
-    state_context: buildStateContext(state, beat.chapter),
+    foundation_summary: '（见 System 静态作品圣经）',
+    state_context: '（见 System 本章共享动态记忆切片）',
     beat_sheet: formatBeatSheet(beat),
     lint_summary: formatLintSummary(lintResult),
     chapter_number: beat.chapter,
@@ -37,6 +44,7 @@ export async function runChapterCritic(params: {
     chapter: beat.chapter,
     recipe: recipe.config,
     schema: CriticReportSchema,
+    system: sharedSystem,
     prompt,
   });
 

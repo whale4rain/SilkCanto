@@ -8,6 +8,7 @@
   },
   "scripts": {
     "silkcanto": "node --use-env-proxy --import tsx src/cli.ts",
+    "ui": "node --use-env-proxy --import tsx src/cli.ts ui",
     "dev": "node --use-env-proxy --import tsx src/cli.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit",

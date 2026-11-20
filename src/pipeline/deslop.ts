@@ -1,19 +1,28 @@
 import { renderTemplate, type LoadedRecipe } from '../config.js';
 import type { LLMClient } from '../core/llm.js';
-import type { BeatSheet, CostRecord } from '../memory/schema.js';
+import { buildChapterSharedSystemPrompt } from '../memory/context.js';
+import type { BeatSheet, BookState, CostRecord } from '../memory/schema.js';
 import { cleanModelProse } from './chapter.js';
 import { formatLintSummary, lintChapterText } from './linter.js';
 
 export async function runChapterDeslop(params: {
+  workspaceDir: string;
+  state: BookState;
   draft: string;
   beat: BeatSheet;
   recipe: LoadedRecipe;
   llm: LLMClient;
 }): Promise<{ text: string; cost: CostRecord } | null> {
-  const { draft, beat, recipe, llm } = params;
+  const { workspaceDir, state, draft, beat, recipe, llm } = params;
   const template = recipe.prompts.deslop;
   if (!template) return null;
 
+  const sharedSystem = buildChapterSharedSystemPrompt(
+    workspaceDir,
+    state,
+    recipe,
+    beat.chapter,
+  );
   const preLint = lintChapterText(draft, recipe.antiSlop);
   const prompt = renderTemplate(template, {
     chapter_number: beat.chapter,
@@ -32,6 +41,7 @@ export async function runChapterDeslop(params: {
     stage: 'deslop',
     chapter: beat.chapter,
     recipe: recipe.config,
+    system: sharedSystem,
     prompt,
   });
 

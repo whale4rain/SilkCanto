@@ -201,20 +201,33 @@ export const ChapterRecordSchema = z.object({
 });
 export type ChapterRecord = z.infer<typeof ChapterRecordSchema>;
 
+export const ReasoningEffortSchema = z.enum(['low', 'medium', 'high']);
+export type ReasoningEffort = z.infer<typeof ReasoningEffortSchema>;
+
 export const CostRecordSchema = z.object({
   timestamp: z.string(),
   stage: PipelineStageSchema,
   model: z.string(),
+  reasoning_effort: ReasoningEffortSchema.optional(),
   chapter: z.number().int().optional(),
   prompt_tokens: z.number().int(),
+  cached_input_tokens: z.number().int().default(0),
   completion_tokens: z.number().int(),
+  reasoning_tokens: z.number().int().default(0),
+  duration_ms: z.number().int().default(0),
+  ttft_ms: z.number().int().optional(),
+  retries: z.number().int().default(0),
+  used_fallback: z.boolean().default(false),
   estimated_cost_cny: z.number(),
 });
 export type CostRecord = z.infer<typeof CostRecordSchema>;
 
 export const CostLedgerSchema = z.object({
   total_prompt_tokens: z.number().int().default(0),
+  total_cached_input_tokens: z.number().int().default(0),
   total_completion_tokens: z.number().int().default(0),
+  total_reasoning_tokens: z.number().int().default(0),
+  total_duration_ms: z.number().int().default(0),
   total_cost_cny: z.number().default(0),
   calls: z.array(CostRecordSchema).default([]),
 });

@@ -124,6 +124,7 @@ export async function runOpeningRace(params: {
       const lint = lintChapterText(draft, recipe.antiSlop);
 
       const { delta, cost: commitCost } = await extractChapterCommit({
+        workspaceDir: runtime.workspaceDir,
         state: simState,
         chapterNumber: plan.chapter,
         chapterContent: draft,

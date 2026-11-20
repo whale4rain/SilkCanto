@@ -1,6 +1,6 @@
 import { renderTemplate, type LoadedRecipe } from '../config.js';
 import type { LLMClient } from '../core/llm.js';
-import { buildStateContext } from '../memory/context.js';
+import { buildChapterSharedSystemPrompt } from '../memory/context.js';
 import {
   CommitDeltaSchema,
   type BookState,
@@ -9,17 +9,24 @@ import {
 } from '../memory/schema.js';
 
 export async function extractChapterCommit(params: {
+  workspaceDir: string;
   state: BookState;
   chapterNumber: number;
   chapterContent: string;
   recipe: LoadedRecipe;
   llm: LLMClient;
 }): Promise<{ delta: CommitDelta; cost: CostRecord }> {
-  const { state, chapterNumber, chapterContent, recipe, llm } = params;
+  const { workspaceDir, state, chapterNumber, chapterContent, recipe, llm } = params;
+  const sharedSystem = buildChapterSharedSystemPrompt(
+    workspaceDir,
+    state,
+    recipe,
+    chapterNumber,
+  );
 
   const prompt = renderTemplate(recipe.prompts.commit || '', {
     chapter_number: chapterNumber,
-    state_context: buildStateContext(state, chapterNumber),
+    state_context: '（见 System 本章共享动态记忆切片）',
     chapter_content: chapterContent,
   });
 
@@ -28,6 +35,7 @@ export async function extractChapterCommit(params: {
     chapter: chapterNumber,
     recipe: recipe.config,
     schema: CommitDeltaSchema,
+    system: sharedSystem,
     prompt,
   });
 
